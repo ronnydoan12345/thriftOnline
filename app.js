@@ -48,7 +48,12 @@ function register() {
     return;
   }
 
-  users.push({ username, password });
+  users.push({
+    id: Date.now(),
+    username,
+    password
+  });
+
   localStorage.setItem("users", JSON.stringify(users));
 
   document.getElementById("message").innerText = "Registered successfully! Redirecting...";
@@ -72,7 +77,7 @@ function login() {
   const user = users.find(u => u.username === username && u.password === password);
 
   if (user) {
-    localStorage.setItem("currentUser", username);
+    localStorage.setItem("currentUser", user.id);
     window.location.href = "home.html";
   } else {
     document.getElementById("message").innerText = "The username or password is incorrect.  Please check your credentials or create a new account to start shopping.";
@@ -85,21 +90,52 @@ function loadProducts() {
 
   container.innerHTML = "";
 
+  container.style.display = "flex";
   container.style.flexDirection = isGrid ? "row" : "column";
+  container.style.flexWrap = "wrap";
+  container.style.gap = "20px";
 
-  products.forEach(product => {
+  products.forEach((product, index) => {
+    const itemId = index + 1;
+
     container.innerHTML += `
-      <div>
+      <div style="border:1px solid #ccc; padding:10px; width:200px;">
         <h3>${product.title}</h3>
         <img src="${product.img}" width="150">
         <p>${product.desc}</p>
         <p><strong>${product.price}</strong></p>
 
+        <!-- add to cart section -->
         <button onclick="addToCart('${product.price}')">
           Add To Cart
         </button>
+
+        <hr>
+
+        <!-- rating section -->
+        <p><strong>Rate this item:</strong></p>
+
+        <select id="rating-${itemId}">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+
+        <button onclick="submitRating(${itemId})">
+          Submit Rating
+        </button>
+
+        <button onclick="deleteRating(${itemId})">
+          Delete Rating
+        </button>
+
+        <p id="avg-${itemId}">Loading rating...</p>
       </div>
     `;
+
+    fetchAverage(itemId);
   });
 }
 
@@ -142,41 +178,78 @@ function addToCart(price) {
 }
 
 async function applyCoupon() {
-  const couponCode =
-    document.getElementById("couponCode").value;
+  const couponCode = document.getElementById("couponCode").value;
 
-  try {
-    const response = await fetch(
-      "http://localhost:5000/api/coupons/apply",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          couponCode,
-          orderTotal: originalTotal
-        })
-      }
-    );
+  const orderTotal = cartTotal;
 
-    const data = await response.json();
+  const response = await fetch("http://localhost:5000/api/coupons/apply", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      couponCode,
+      orderTotal
+    })
+  });
 
-    if (!response.ok) {
-      document.getElementById("couponMessage").textContent =
-        data.message;
-      return;
-    }
+  const data = await response.json();
 
-    cartTotal = data.discountedTotal;
-
-    document.getElementById("cartTotal").textContent =
-      cartTotal.toFixed(2);
-
-    document.getElementById("couponMessage").textContent =
-      "Coupon applied successfully!";
-  } catch (error) {
-    document.getElementById("couponMessage").textContent =
-      "Coupon service unavailable.";
+  if (!response.ok) {
+    document.getElementById("couponMessage").textContent = data.message;
+    return;
   }
+
+  cartTotal = data.discountedTotal;
+
+  document.getElementById("cartTotal").textContent = cartTotal.toFixed(2);
+  document.getElementById("couponMessage").textContent =
+    "Coupon applied successfully!";
+}
+
+function submitRating(itemId) {
+  const userId = localStorage.getItem("currentUser") || "0";
+  const rating = document.getElementById(`rating-${itemId}`).value;
+
+  fetch("http://localhost:3000/ratings", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      userId,
+      itemId,
+      rating
+    })
+  })
+    .then(res => res.json())
+    .then(data => {
+      alert(data.message);
+      fetchAverage(itemId);
+    });
+}
+
+function fetchAverage(itemId) {
+  fetch(`http://localhost:3000/ratings/average/${itemId}`)
+    .then(res => res.json())
+    .then(data => {
+      const avg = data.average ?? 0;
+      const count = data.count ?? 0;
+
+      document.getElementById(`avg-${itemId}`).innerText =
+        `⭐ ${avg.toFixed(1)} (${count})`;
+    });
+}
+
+function deleteRating(itemId) {
+  const userId = localStorage.getItem("currentUser");
+
+  fetch(`http://localhost:3000/ratings/${itemId}/${userId}`, {
+    method: "DELETE"
+  })
+  .then(res => res.json())
+  .then(data => {
+    alert(data.message);
+    fetchAverage(itemId);
+  });
 }
