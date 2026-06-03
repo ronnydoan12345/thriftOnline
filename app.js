@@ -25,6 +25,12 @@ if (!localStorage.getItem("products")) {
   localStorage.setItem("products", JSON.stringify(defaultProducts));
 }
 
+let isGrid = true;
+
+let cartTotal = 0;
+
+let originalTotal = 0;
+
 function register() {
   const username = document.getElementById("regUsername").value.trim();
   const password = document.getElementById("regPassword").value.trim();
@@ -69,7 +75,7 @@ function login() {
     localStorage.setItem("currentUser", username);
     window.location.href = "home.html";
   } else {
-    document.getElementById("message").innerText = "Invalid login!";
+    document.getElementById("message").innerText = "The username or password is incorrect.  Please check your credentials or create a new account to start shopping.";
   }
 }
 
@@ -79,13 +85,19 @@ function loadProducts() {
 
   container.innerHTML = "";
 
+  container.style.flexDirection = isGrid ? "row" : "column";
+
   products.forEach(product => {
     container.innerHTML += `
-      <div style="margin-bottom:20px;">
+      <div>
         <h3>${product.title}</h3>
-        <img src="${product.img}" width="150" style="display:block; margin-bottom:10px;">
+        <img src="${product.img}" width="150">
         <p>${product.desc}</p>
         <p><strong>${product.price}</strong></p>
+
+        <button onclick="addToCart('${product.price}')">
+          Add To Cart
+        </button>
       </div>
     `;
   });
@@ -98,4 +110,73 @@ function goToRegister() {
 function logout() {
   localStorage.removeItem("currentUser");
   window.location.href = "index.html";
+}
+
+function toggleView() {
+  const container = document.getElementById("products");
+
+  if (isGrid) {
+    container.style.flexDirection = "column";
+  } else {
+    container.style.flexDirection = "row";
+  }
+
+  isGrid = !isGrid;
+}
+
+function goToLogin() {
+  window.location.href = "index.html";
+}
+
+function addToCart(price) {
+  const numericPrice = parseFloat(price.replace("$", ""));
+
+  cartTotal += numericPrice;
+
+  if (originalTotal === 0) {
+    originalTotal = cartTotal;
+  }
+
+  document.getElementById("cartTotal").textContent =
+    cartTotal.toFixed(2);
+}
+
+async function applyCoupon() {
+  const couponCode =
+    document.getElementById("couponCode").value;
+
+  try {
+    const response = await fetch(
+      "http://localhost:5000/api/coupons/apply",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          couponCode,
+          orderTotal: originalTotal
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      document.getElementById("couponMessage").textContent =
+        data.message;
+      return;
+    }
+
+    cartTotal = data.discountedTotal;
+
+    document.getElementById("cartTotal").textContent =
+      cartTotal.toFixed(2);
+
+    document.getElementById("couponMessage").textContent =
+      "Coupon applied successfully!";
+  } catch (error) {
+    document.getElementById("couponMessage").textContent =
+      "Coupon service unavailable.";
+  }
 }
