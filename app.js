@@ -110,6 +110,10 @@ function loadProducts() {
           Add To Cart
         </button>
 
+        <button onclick="addToWishlist(${itemId})">
+          Add To Wishlist
+        </button>
+
         <hr>
 
         <!-- rating section -->
@@ -252,4 +256,91 @@ function deleteRating(itemId) {
     alert(data.message);
     fetchAverage(itemId);
   });
+}
+
+function addToWishlist(itemId) {
+  const userId = localStorage.getItem("currentUser");
+
+  fetch("http://localhost:4000/wishlist", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      userId,
+      itemId
+    })
+  })
+    .then(res => res.json())
+    .then(data => {
+      alert(data.message);
+      loadWishlist();
+    });
+}
+
+function loadWishlist() {
+  const userId = localStorage.getItem("currentUser");
+
+  fetch(`http://localhost:4000/wishlist/${userId}`)
+    .then(res => res.json())
+    .then(data => {
+
+      const wishlistDiv =
+        document.getElementById("wishlistItems");
+
+      wishlistDiv.style.display = "flex";
+      wishlistDiv.style.flexWrap = "wrap";
+      wishlistDiv.style.gap = "20px";  
+
+      if (data.length === 0) {
+        wishlistDiv.innerHTML =
+          "No wishlist items yet.";
+        return;
+      }
+
+      wishlistDiv.innerHTML = "";
+
+      const products =
+        JSON.parse(localStorage.getItem("products")) || [];
+
+      data.forEach(item => {
+
+        const product =
+          products[item.itemId - 1];
+
+        if (!product) {
+          return;
+        }
+
+        wishlistDiv.innerHTML += `
+          <div style="border:1px solid #ccc; padding:10px; width:180px;">
+            <img src="${product.img}" width="75">
+
+            <p><strong>${product.title}</strong></p>
+
+            <p>${product.price}</p>
+
+            <button onclick="removeWishlistItem(${item.itemId})">
+              Remove
+            </button>
+          </div>
+        `;
+      });
+    });
+}
+
+function removeWishlistItem(itemId) {
+  const userId = localStorage.getItem("currentUser");
+
+  fetch(
+    `http://localhost:4000/wishlist/${userId}/${itemId}`,
+    {
+      method: "DELETE"
+    }
+  )
+    .then(res => res.json())
+    .then(data => {
+      alert(data.message);
+      loadWishlist();
+    });
 }
