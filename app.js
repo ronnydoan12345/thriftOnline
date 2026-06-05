@@ -114,6 +114,10 @@ function loadProducts() {
           Add To Wishlist
         </button>
 
+        <button onclick="loadRecommendations('${product.title}')">
+          View Similar Items
+        </button>
+
         <hr>
 
         <!-- rating section -->
@@ -342,5 +346,64 @@ function removeWishlistItem(itemId) {
     .then(data => {
       alert(data.message);
       loadWishlist();
+    });
+}
+
+function loadTrendingItems() {
+  fetch("http://localhost:7000/recommendations/trending")
+    .then(res => res.json())
+    .then(data => {
+
+      const div =
+        document.getElementById("trendingItems");
+
+      div.innerHTML = "";
+
+      data.forEach(item => {
+        div.innerHTML += `
+          <div style="display:inline-block; margin:10px;">
+            <img src="images/${item.image}" width="100">
+
+            <p>${item.name}</p>
+          </div>
+        `;
+      });
+    });
+}
+
+function loadRecommendations(category) {
+
+  let serviceCategory = "shirts";
+
+  if (category.includes("Jacket")) {
+    serviceCategory = "jackets";
+  }
+  else if (
+    category.includes("Swim") ||
+    category.includes("Shorts")
+  ) {
+    serviceCategory = "shorts";
+  }
+
+  fetch(
+    `http://localhost:7000/recommendations/category/${serviceCategory}`
+  )
+    .then(res => res.json())
+    .then(data => {
+
+      const div =
+        document.getElementById("recommendedItems");
+
+      div.innerHTML = "";
+
+      data.forEach(item => {
+        div.innerHTML += `
+          <div style="display:inline-block; margin:10px;">
+            <img src="images/${item.image}" width="100">
+
+            <p>${item.name}</p>
+          </div>
+        `;
+      });
     });
 }
