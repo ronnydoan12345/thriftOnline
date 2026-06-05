@@ -284,6 +284,7 @@ function addToWishlist(itemId) {
 
 function loadWishlist() {
   const userId = localStorage.getItem("currentUser");
+  
 
   fetch(`http://localhost:4000/wishlist/${userId}`)
     .then(res => res.json())
@@ -406,4 +407,26 @@ function loadRecommendations(category) {
         `;
       });
     });
+}
+
+function checkout() {
+  if (cartTotal === 0) {
+    document.getElementById("message").innerText =
+      "Your cart is empty!";
+    return;
+  }
+
+  document.getElementById("message").innerText =
+    "Thank you for shopping at ThriftOnline!";
+
+  cartTotal = 0;
+  originalTotal = 0;
+  cart = [];
+
+  document.getElementById("cartTotal").textContent = "0.00";
+
+  const cartItems = document.getElementById("cartItems");
+  if (cartItems) {
+    cartItems.innerHTML = "";
+  }
 }
